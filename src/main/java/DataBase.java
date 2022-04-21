@@ -57,13 +57,4 @@ public class DataBase {
         }
     }
 
-    public void getData() {
-        String query = " SELECT * FROM laptops";
-        try {
-            rs = st.executeQuery(query);
-            System.out.println(rs);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 }

@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import static java.awt.Color.*;
 import static java.awt.FlowLayout.LEFT;
@@ -131,7 +132,7 @@ public class Main extends JFrame {
                 numberNewRows++;
             }
         }
-
+        System.out.println(rowsP);
         for (i = rowsP - 1; i >= 0; i--) {
             tableModel.removeRow(i);
         }
@@ -161,7 +162,6 @@ public class Main extends JFrame {
         assert fileReaderPom != null;
         BufferedReader bufferedReaderPom = new BufferedReader(fileReaderPom);
         String[] words;
-        baseRows = 0;
 
         try {
             bufferedReaderPom.readLine();
@@ -179,7 +179,7 @@ public class Main extends JFrame {
             }
             baseRows++;
         }
-        dataPom = new Object[baseRows][columns];
+        dataPom = data;
         data = new Object[baseRows][columns];
 
         try {
@@ -223,7 +223,7 @@ public class Main extends JFrame {
                 assert zapis != null;
                 zapis.print(data[i][j] + ";");
             }
-            if (i < 23) {
+            if (i < baseRows - 1) {
                 zapis.print("\n");
             }
         }
@@ -231,7 +231,7 @@ public class Main extends JFrame {
     }
 
     static void importFromXml() throws SAXException, ParserConfigurationException {
-        File file = new File("src/laptops.xml");
+        File file = new File("laptops.xml");
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
         Document document = null;
@@ -247,10 +247,9 @@ public class Main extends JFrame {
 
         duplicatedRows.clear();
 
-        dataPom = new Object[baseRows][columns];
-        data = new Object[baseRows][columns];
-
+        dataPom = data;
         pomRows = baseRows;
+
         baseRows = nodeList.getLength();
         data = new Object[baseRows][columns];
         int j;
@@ -464,9 +463,91 @@ public class Main extends JFrame {
             data[i][j] = resultSet.getString("system");
             j++;
             data[i][j] = resultSet.getString("naped");
-            j++;
+            i++;
         }
         findDuplicates(baseRows, pomRows);
+    }
+
+    static void exportToDataBase() throws SQLException {
+        var dataBase = new DataBase();
+        Connection connection = dataBase.connect();
+        ResultSet resultSet = connection.createStatement().executeQuery("SELECT * FROM laptops");
+        ResultSet resultSetPom = connection.createStatement().executeQuery("SELECT * FROM laptops");
+
+        numeberDupilacedRows = 0;
+        numberNewRows = 0;
+
+        while (resultSetPom.next()) {
+            pomRows++;
+        }
+
+        dataPom = new Object[pomRows][columns];
+        i = 0;
+        while (resultSet.next()) {
+            j = 0;
+            dataPom[i][j] = resultSet.getString("producent");
+            j++;
+            dataPom[i][j] = resultSet.getString("przekatna");
+            j++;
+            dataPom[i][j] = resultSet.getString("rozdzielczosc");
+            j++;
+            dataPom[i][j] = resultSet.getString("matryca");
+            j++;
+            dataPom[i][j] = resultSet.getString("dotykowy");
+            j++;
+            dataPom[i][j] = resultSet.getString("procesor");
+            j++;
+            dataPom[i][j] = resultSet.getString("rdzenie");
+            j++;
+            dataPom[i][j] = resultSet.getString("taktowanie");
+            j++;
+            dataPom[i][j] = resultSet.getString("ram");
+            j++;
+            dataPom[i][j] = resultSet.getString("dysk");
+            j++;
+            dataPom[i][j] = resultSet.getString("rdysku");
+            j++;
+            dataPom[i][j] = resultSet.getString("nazwagraf");
+            j++;
+            dataPom[i][j] = resultSet.getString("uklgraf");
+            j++;
+            dataPom[i][j] = resultSet.getString("system");
+            j++;
+            dataPom[i][j] = resultSet.getString("naped");
+            i++;
+        }
+
+        for (i = 0; i < baseRows; i++) {
+            for (j = 0; j < pomRows; j++) {
+                if (String.valueOf(data[i][0]).equals(String.valueOf(dataPom[j][0])) &&
+                        String.valueOf(data[i][1]).equals(String.valueOf(dataPom[j][1])) &&
+                        String.valueOf(data[i][2]).equals(String.valueOf(dataPom[j][2])) &&
+                        String.valueOf(data[i][3]).equals(String.valueOf(dataPom[j][3])) &&
+                        String.valueOf(data[i][4]).equals(String.valueOf(dataPom[j][4])) &&
+                        String.valueOf(data[i][5]).equals(String.valueOf(dataPom[j][5])) &&
+                        String.valueOf(data[i][6]).equals(String.valueOf(dataPom[j][6])) &&
+                        String.valueOf(data[i][7]).equals(String.valueOf(dataPom[j][7])) &&
+                        String.valueOf(data[i][8]).equals(String.valueOf(dataPom[j][8])) &&
+                        String.valueOf(data[i][9]).equals(String.valueOf(dataPom[j][9])) &&
+                        String.valueOf(data[i][10]).equals(String.valueOf(dataPom[j][10])) &&
+                        String.valueOf(data[i][11]).equals(String.valueOf(dataPom[j][11])) &&
+                        String.valueOf(data[i][12]).equals(String.valueOf(dataPom[j][12])) &&
+                        String.valueOf(data[i][13]).equals(String.valueOf(dataPom[j][13])) &&
+                        String.valueOf(data[i][14]).equals(String.valueOf(dataPom[j][14]))) {
+                    isDuplicated = true;
+                }
+            }
+            if (!isDuplicated) {
+                connection.createStatement().execute("INSERT INTO laptops  (producent, przekatna, rozdzielczosc, matryca, dotykowy, " +
+                        "procesor, rdzenie, taktowanie, ram," +
+                        "dysk, rdysku, nazwagraf, uklgraf, system, naped) VALUES" +
+                        "('" + data[i][0] + "','" + data[i][1] + "','" + data[i][2] + "','" +
+                        data[i][3] + "','" + data[i][4] + "','" + data[i][5] + "','" + data[i][6] + "','"
+                        + data[i][7] + "','" + data[i][8] + "','" + data[i][9] + "','" + data[i][10] + "','"
+                        + data[i][11] + "','" + data[i][12] + "','" + data[i][13] + "','" + data[i][14] + "')");
+                numberNewRows++;
+            } else numeberDupilacedRows++;
+        }
     }
 
     public static void main(String[] args) {
@@ -479,7 +560,6 @@ public class Main extends JFrame {
         setButtons();
         info.setText("Integracja systemów");
         info.setFocusable(false);
-
 
         tableModel = new DefaultTableModel(0, 0);     //TableModel
         tableModel.setColumnIdentifiers(headers);
@@ -588,6 +668,16 @@ public class Main extends JFrame {
                     info.setText("Wczytano dane z bazy danych:  " + numberNewRows + " nowych rekordow, " + numeberDupilacedRows + " duplikatow");
                     editedRows.clear();
                     window.repaint();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        bExportDB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    exportToDataBase();
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                 }
