@@ -302,16 +302,14 @@ public class Main extends JFrame {
         Element laptops = document.createElement("laptops");
         laptops.setAttribute("moddate", String.valueOf(new Date()));
 
-        int j;
-        for (int i = 0; i < baseRows; i++) {
+
+        for (i = 0; i < baseRows; i++) {
             j = 0;
             Element laptop = document.createElement("laptop");
             laptop.setAttribute("id", String.valueOf(i + 1));
 
             Element manufacturer = document.createElement("manufacturer");
-
             manufacturer.setTextContent((String) data[i][j]);
-
             j++;
 
             Element screen = document.createElement("screen");
@@ -476,6 +474,7 @@ public class Main extends JFrame {
 
         numeberDupilacedRows = 0;
         numberNewRows = 0;
+        isDuplicated = false;
 
         while (resultSetPom.next()) {
             pomRows++;
@@ -546,7 +545,11 @@ public class Main extends JFrame {
                         + data[i][7] + "','" + data[i][8] + "','" + data[i][9] + "','" + data[i][10] + "','"
                         + data[i][11] + "','" + data[i][12] + "','" + data[i][13] + "','" + data[i][14] + "')");
                 numberNewRows++;
-            } else numeberDupilacedRows++;
+                System.out.println(numberNewRows);
+            } else {
+                numeberDupilacedRows++;
+                isDuplicated = false;
+            }
         }
     }
 
