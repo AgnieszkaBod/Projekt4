@@ -6,7 +6,7 @@ public class DataBase {
     private ResultSet rs;
 
 
-    public void connect() {
+    public Connection connect() {
         try {
             Class.forName("org.postgresql.Driver");
 
@@ -17,6 +17,7 @@ public class DataBase {
         } catch (Exception ex) {
             System.out.println("Blad polaczenia: " + ex);
         }
+        return con;
     }
 
     public void insertData() {

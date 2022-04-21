@@ -1,12 +1,31 @@
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static java.awt.Color.*;
@@ -80,6 +99,49 @@ public class Main extends JFrame {
         bExportDB.setBackground(GREEN);
     }
 
+    static void findDuplicates(int rowsB, int rowsP) {
+        numeberDupilacedRows = 0;
+        numberNewRows = 0;
+        for (i = 0; i < rowsB; i++) {
+            isDuplicated = false;
+            for (j = 0; j < rowsP; j++) {
+                if (String.valueOf(data[i][0]).equals(String.valueOf(dataPom[j][0])) &&
+                        String.valueOf(data[i][1]).equals(String.valueOf(dataPom[j][1])) &&
+                        String.valueOf(data[i][2]).equals(String.valueOf(dataPom[j][2])) &&
+                        String.valueOf(data[i][3]).equals(String.valueOf(dataPom[j][3])) &&
+                        String.valueOf(data[i][4]).equals(String.valueOf(dataPom[j][4])) &&
+                        String.valueOf(data[i][5]).equals(String.valueOf(dataPom[j][5])) &&
+                        String.valueOf(data[i][6]).equals(String.valueOf(dataPom[j][6])) &&
+                        String.valueOf(data[i][7]).equals(String.valueOf(dataPom[j][7])) &&
+                        String.valueOf(data[i][8]).equals(String.valueOf(dataPom[j][8])) &&
+                        String.valueOf(data[i][9]).equals(String.valueOf(dataPom[j][9])) &&
+                        String.valueOf(data[i][10]).equals(String.valueOf(dataPom[j][10])) &&
+                        String.valueOf(data[i][11]).equals(String.valueOf(dataPom[j][11])) &&
+                        String.valueOf(data[i][12]).equals(String.valueOf(dataPom[j][12])) &&
+                        String.valueOf(data[i][13]).equals(String.valueOf(dataPom[j][13])) &&
+                        String.valueOf(data[i][14]).equals(String.valueOf(dataPom[j][14]))) {
+                    isDuplicated = true;
+                }
+            }
+
+            if (isDuplicated) {
+                duplicatedRows.add(i);
+                numeberDupilacedRows++;
+            } else {
+                numberNewRows++;
+            }
+        }
+
+        for (i = rowsP - 1; i >= 0; i--) {
+            tableModel.removeRow(i);
+        }
+
+        for (i = 0; i < rowsB; i++) {
+            tableModel.addRow(data[i]);
+        }
+
+    }
+
     static void importFromTxt() {
         FileReader fileReader = null;
         FileReader fileReaderPom = null;
@@ -99,7 +161,6 @@ public class Main extends JFrame {
         assert fileReaderPom != null;
         BufferedReader bufferedReaderPom = new BufferedReader(fileReaderPom);
         String[] words;
-
         baseRows = 0;
 
         try {
@@ -107,6 +168,8 @@ public class Main extends JFrame {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        pomRows = baseRows;
+        baseRows = 0;
 
         while (true) {
             try {
@@ -116,8 +179,9 @@ public class Main extends JFrame {
             }
             baseRows++;
         }
-
+        dataPom = new Object[baseRows][columns];
         data = new Object[baseRows][columns];
+
         try {
             line = bufferedReader.readLine();
         } catch (IOException e) {
@@ -131,20 +195,278 @@ public class Main extends JFrame {
                 e.printStackTrace();
             }
             words = line.split(";", -1);
-            for (int j = 0; j <=14; j++) {
+            for (int j = 0; j <= 14; j++) {
                 data[i][j] = words[j];
                 if (data[i][j] == null || data[i][j].equals("")) {
                     data[i][j] = "Brak informacji";
                 }
             }
         }
-
+        findDuplicates(baseRows, pomRows);
         try {
             fileReader.close();
         } catch (IOException e) {
             System.out.println("Blad przy zamykaniu pliku!");
         }
+    }
 
+    static void exportToTxt() {
+        PrintWriter zapis = null;
+        try {
+            zapis = new PrintWriter("src/wyniki.txt", StandardCharsets.UTF_8);
+        } catch (IOException fileNotFoundException) {
+            fileNotFoundException.printStackTrace();
+        }
+
+        for (int i = 0; i < baseRows; i++) {
+            for (int j = 0; j < 15; j++) {
+                assert zapis != null;
+                zapis.print(data[i][j] + ";");
+            }
+            if (i < 23) {
+                zapis.print("\n");
+            }
+        }
+        zapis.close();
+    }
+
+    static void importFromXml() throws SAXException, ParserConfigurationException {
+        File file = new File("src/laptops.xml");
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        Document document = null;
+        try {
+            document = documentBuilder.parse(file);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(window
+                    , "Nie znaleziono pliku xml");
+        }
+        document.getDocumentElement().normalize();
+        System.out.println("Root element: " + document.getDocumentElement().getNodeName());
+        NodeList nodeList = document.getElementsByTagName("laptop");
+
+        duplicatedRows.clear();
+
+        dataPom = new Object[baseRows][columns];
+        data = new Object[baseRows][columns];
+
+        pomRows = baseRows;
+        baseRows = nodeList.getLength();
+        data = new Object[baseRows][columns];
+        int j;
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
+            j = 0;
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                Element element = (Element) node;
+
+                data[i][j] = element.getElementsByTagName("manufacturer").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("size").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("resolution").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("type").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("screen").item(0).getAttributes().getNamedItem("touch").getNodeValue();
+                j++;
+                data[i][j] = element.getElementsByTagName("name").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("physical_cores").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("clock_speed").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("ram").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("storage").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("disc").item(0).getAttributes().getNamedItem("type").getNodeValue();
+                j++;
+                data[i][j] = element.getElementsByTagName("name").item(1).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("memory").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("os").item(0).getTextContent();
+                j++;
+                data[i][j] = element.getElementsByTagName("disc_reader").item(0).getTextContent();
+            }
+        }
+        findDuplicates(baseRows, pomRows);
+    }
+
+    static void exportToXml() throws ParserConfigurationException, TransformerException, FileNotFoundException {
+        DocumentBuilder builder;
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        builder = factory.newDocumentBuilder();
+        Document document = builder.newDocument();
+
+        Element laptops = document.createElement("laptops");
+        laptops.setAttribute("moddate", String.valueOf(new Date()));
+
+        int j;
+        for (int i = 0; i < baseRows; i++) {
+            j = 0;
+            Element laptop = document.createElement("laptop");
+            laptop.setAttribute("id", String.valueOf(i + 1));
+
+            Element manufacturer = document.createElement("manufacturer");
+
+            manufacturer.setTextContent((String) data[i][j]);
+
+            j++;
+
+            Element screen = document.createElement("screen");
+
+            Element size = document.createElement("size");
+            size.setTextContent((String) data[i][j]);
+            j++;
+
+            Element resolution = document.createElement("resolution");
+            resolution.setTextContent((String) data[i][j]);
+            j++;
+
+            Element type = document.createElement("type");
+            type.setTextContent((String) data[i][j]);
+            j++;
+
+            screen.setAttribute("touch", (String) data[i][j]);
+            j++;
+
+            Element processor = document.createElement("processor");
+
+            Element name = document.createElement("name");
+            name.setTextContent((String) data[i][j]);
+            j++;
+
+            Element physical_cores = document.createElement("physical_cores");
+            physical_cores.setTextContent((String) data[i][j]);
+            j++;
+
+            Element clock_speed = document.createElement("clock_speed");
+            clock_speed.setTextContent((String) data[i][j]);
+            j++;
+
+            Element ram = document.createElement("ram");
+            ram.setTextContent((String) data[i][j]);
+            j++;
+
+            Element disc = document.createElement("disc");
+
+            Element storage = document.createElement("storage");
+            storage.setTextContent((String) data[i][j]);
+            j++;
+
+            disc.setAttribute("type", (String) data[i][j]);
+            j++;
+
+            Element graphic_card = document.createElement("graphic_card");
+
+            Element nameGPU = document.createElement("name");
+            nameGPU.setTextContent((String) data[i][j]);
+            j++;
+
+            Element memory = document.createElement("memory");
+            memory.setTextContent((String) data[i][j]);
+            j++;
+
+
+            Element os = document.createElement("os");
+            os.setTextContent((String) data[i][j]);
+            j++;
+
+
+            Element disc_reader = document.createElement("disc_reader");
+            disc_reader.setTextContent((String) data[i][j]);
+
+            laptop.appendChild(manufacturer);
+
+            screen.appendChild(size);
+            screen.appendChild(resolution);
+            screen.appendChild(type);
+            laptop.appendChild(screen);
+
+            processor.appendChild(name);
+            processor.appendChild(physical_cores);
+            processor.appendChild(clock_speed);
+            laptop.appendChild(processor);
+
+            laptop.appendChild(ram);
+
+            disc.appendChild(storage);
+            laptop.appendChild(disc);
+
+            graphic_card.appendChild(nameGPU);
+            graphic_card.appendChild(memory);
+            laptop.appendChild(graphic_card);
+
+            laptop.appendChild(os);
+
+            laptop.appendChild(disc_reader);
+
+            laptops.appendChild(laptop);
+        }
+
+        document.appendChild(laptops);
+
+        Transformer t = TransformerFactory.newInstance().newTransformer();
+        t.setOutputProperty(OutputKeys.INDENT, "yes");
+        t.setOutputProperty(OutputKeys.METHOD, "xml");
+        t.transform(new DOMSource(document), new StreamResult(new FileOutputStream("laptops.xml")));
+
+    }
+
+    static void importFromDataBase() throws SQLException {
+        var dataBase = new DataBase();
+        Connection connection = dataBase.connect();
+        ResultSet resultSet = connection.createStatement().executeQuery("SELECT * FROM laptops");
+        ResultSet resultSetPom = connection.createStatement().executeQuery("SELECT * FROM laptops");
+
+        duplicatedRows.clear();
+        dataPom = new Object[baseRows][columns];
+        dataPom = data;
+        pomRows = baseRows;
+
+        baseRows = 0;
+        while (resultSetPom.next()) {
+            baseRows++;
+        }
+
+        data = new Object[baseRows][columns];
+        i = 0;
+        while (resultSet.next()) {
+            j = 0;
+            data[i][j] = resultSet.getString("producent");
+            j++;
+            data[i][j] = resultSet.getString("przekatna");
+            j++;
+            data[i][j] = resultSet.getString("rozdzielczosc");
+            j++;
+            data[i][j] = resultSet.getString("matryca");
+            j++;
+            data[i][j] = resultSet.getString("dotykowy");
+            j++;
+            data[i][j] = resultSet.getString("procesor");
+            j++;
+            data[i][j] = resultSet.getString("rdzenie");
+            j++;
+            data[i][j] = resultSet.getString("taktowanie");
+            j++;
+            data[i][j] = resultSet.getString("ram");
+            j++;
+            data[i][j] = resultSet.getString("dysk");
+            j++;
+            data[i][j] = resultSet.getString("rdysku");
+            j++;
+            data[i][j] = resultSet.getString("nazwagraf");
+            j++;
+            data[i][j] = resultSet.getString("uklgraf");
+            j++;
+            data[i][j] = resultSet.getString("system");
+            j++;
+            data[i][j] = resultSet.getString("naped");
+            j++;
+        }
+        findDuplicates(baseRows, pomRows);
     }
 
     public static void main(String[] args) {
@@ -220,6 +542,55 @@ public class Main extends JFrame {
                 info.setText("Wczytano dane z pliku txt:  " + numberNewRows + " nowych rekordow, " + numeberDupilacedRows + " duplikatow");
                 editedRows.clear();
                 window.repaint();
+            }
+        });
+
+        bExportTxt.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                exportToTxt();
+                info.setText("Zapisano dane do pliku txt");
+            }
+        });
+
+        bImportXml.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    importFromXml();
+                    info.setText("Wczytano dane z pliku xml:  " + numberNewRows + " nowych rekordow, " + numeberDupilacedRows + " duplikatow");
+                    editedRows.clear();
+                    window.repaint();
+                } catch (SAXException | ParserConfigurationException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
+        bExportXml.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    exportToXml();
+                } catch (ParserConfigurationException | TransformerException ex) {
+                    ex.printStackTrace();
+                } catch (FileNotFoundException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
+        bImportDB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    importFromDataBase();
+                    info.setText("Wczytano dane z bazy danych:  " + numberNewRows + " nowych rekordow, " + numeberDupilacedRows + " duplikatow");
+                    editedRows.clear();
+                    window.repaint();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
             }
         });
     }
